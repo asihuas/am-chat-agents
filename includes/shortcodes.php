@@ -926,23 +926,23 @@ function am_agent_grid_shortcode(){
   wp_enqueue_style('am-agent-grid', AM_CA_PLUGIN_URL.'assets/css/agent-grid.css', [], AM_CA_VERSION);
   wp_enqueue_script('am-agent-grid', AM_CA_PLUGIN_URL.'assets/js/agent-grid.js', [], AM_CA_VERSION, true);
 
-  $terms = get_terms(['taxonomy'=>'am_agent_category','hide_empty'=>true]);
+  $terms = get_terms(['taxonomy'=>'am_agent_tag','hide_empty'=>true]);
   $tabs = [];
   $sections_html = '';
+  $first = true;
   foreach($terms as $t){
     $agents = get_posts([
       'post_type' => 'am_agent',
       'numberposts' => -1,
       'tax_query' => [[
-        'taxonomy' => 'am_agent_category',
+        'taxonomy' => 'am_agent_tag',
         'terms' => [$t->term_id],
       ]],
       'orderby' => 'title',
       'order' => 'ASC'
     ]);
     if(!$agents) continue;
-    $sections_html .= '<section id="am-agent-section-'.esc_attr($t->term_id).'" class="am-agent-section">';
-    $sections_html .= '<h3 class="am-agent-section-title">'.esc_html($t->name).'</h3>';
+    $sections_html .= '<section id="am-agent-section-'.esc_attr($t->term_id).'" class="am-agent-section'.($first?' active':'').'">';
     $sections_html .= '<div class="am-agent-row">';
     foreach($agents as $a){
       $name = get_the_title($a);
@@ -963,9 +963,11 @@ function am_agent_grid_shortcode(){
     }
     $sections_html .= '</div></section>';
     $tabs[] = ['id'=>$t->term_id,'name'=>$t->name];
+    $first = false;
   }
   ob_start();
   echo '<div class="am-agent-grid-wrapper">';
+  echo $sections_html;
   if($tabs){
     echo '<div class="am-agent-tabs">';
     foreach($tabs as $tab){
@@ -973,7 +975,6 @@ function am_agent_grid_shortcode(){
     }
     echo '</div>';
   }
-  echo $sections_html;
   echo '</div>';
   return ob_get_clean();
 }
