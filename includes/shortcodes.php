@@ -928,38 +928,44 @@ function am_agent_grid_shortcode(){
 
   $terms = get_terms(['taxonomy'=>'am_agent_category','hide_empty'=>true]);
   $tabs = [];
-  ob_start();
-  echo '<div class="am-agent-grid-wrapper">';
+  $sections_html = '';
   foreach($terms as $t){
     $agents = get_posts([
       'post_type' => 'am_agent',
       'numberposts' => -1,
       'tax_query' => [[
         'taxonomy' => 'am_agent_category',
-        'terms' => $t->term_id,
+        'terms' => [$t->term_id],
       ]],
       'orderby' => 'title',
       'order' => 'ASC'
     ]);
     if(!$agents) continue;
-    echo '<section id="am-agent-section-'.esc_attr($t->term_id).'" class="am-agent-section">';
-    echo '<h3 class="am-agent-section-title">'.esc_html($t->name).'</h3>';
-    echo '<div class="am-agent-row">';
+    $sections_html .= '<section id="am-agent-section-'.esc_attr($t->term_id).'" class="am-agent-section">';
+    $sections_html .= '<h3 class="am-agent-section-title">'.esc_html($t->name).'</h3>';
+    $sections_html .= '<div class="am-agent-row">';
     foreach($agents as $a){
       $name = get_the_title($a);
       $subtitle = get_post_meta($a->ID,'am_subtitle',true);
+      $complement = get_post_meta($a->ID,'am_complement',true);
       $avatar = get_the_post_thumbnail_url($a->ID,'thumbnail');
       $link = add_query_arg('agent_id',$a->ID, am_find_chat_page_url());
-      $search = strtolower($name.' '.($subtitle ?: ''));
-      echo '<a class="am-agent-card" href="'.esc_url($link).'" data-search="'.esc_attr($search).'">';
-      if($avatar) echo '<img src="'.esc_url($avatar).'" alt="'.esc_attr($name).'" />';
-      echo '<div class="am-agent-card-meta"><span class="am-agent-name">'.esc_html($name).'</span>';
-      if($subtitle) echo '<span class="am-agent-subtitle">'.esc_html($subtitle).'</span>';
-      echo '</div></a>';
+      $cats = wp_get_post_terms($a->ID,'am_agent_category',['fields'=>'names']);
+      $tags = wp_get_post_terms($a->ID,'am_agent_tag',['fields'=>'names']);
+      $search_parts = [$name,$subtitle,implode(' ',$cats),implode(' ',$tags),$complement];
+      $search = strtolower(trim(implode(' ',$search_parts)));
+      $sections_html .= '<a class="am-agent-card" href="'.esc_url($link).'" data-search="'.esc_attr($search).'">';
+      if($avatar) $sections_html .= '<img src="'.esc_url($avatar).'" alt="'.esc_attr($name).'" />';
+      $sections_html .= '<div class="am-agent-card-meta"><span class="am-agent-name">'.esc_html($name).'</span>';
+      if($subtitle) $sections_html .= '<span class="am-agent-subtitle">'.esc_html($subtitle).'</span>';
+      if($complement) $sections_html .= '<span class="am-agent-complement">&ldquo;'.esc_html($complement).'&rdquo;</span>';
+      $sections_html .= '</div></a>';
     }
-    echo '</div></section>';
+    $sections_html .= '</div></section>';
     $tabs[] = ['id'=>$t->term_id,'name'=>$t->name];
   }
+  ob_start();
+  echo '<div class="am-agent-grid-wrapper">';
   if($tabs){
     echo '<div class="am-agent-tabs">';
     foreach($tabs as $tab){
@@ -967,6 +973,7 @@ function am_agent_grid_shortcode(){
     }
     echo '</div>';
   }
+  echo $sections_html;
   echo '</div>';
   return ob_get_clean();
 }
@@ -978,7 +985,7 @@ function am_agent_search_shortcode(){
   wp_enqueue_style('am-agent-grid', AM_CA_PLUGIN_URL.'assets/css/agent-grid.css', [], AM_CA_VERSION);
   wp_enqueue_script('am-agent-grid', AM_CA_PLUGIN_URL.'assets/js/agent-grid.js', [], AM_CA_VERSION, true);
   ob_start();
-  echo '<div class="am-agent-search-wrap"><input type="search" class="am-agent-search" placeholder="Search" /></div>';
+  echo '<div class="am-agent-search-wrap"><input type="search" class="am-agent-search am-search-input" placeholder="Search" /></div>';
   return ob_get_clean();
 }
 add_shortcode('am_agent_search','am_agent_search_shortcode');
