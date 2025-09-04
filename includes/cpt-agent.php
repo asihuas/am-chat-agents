@@ -7,12 +7,20 @@ add_action('init', function(){
     'public' => false,
     'show_ui' => true,
     'supports' => ['title','thumbnail'],
-    'taxonomies' => ['am_agent_category'],
+    'taxonomies' => ['am_agent_category','am_agent_tag'],
     'menu_icon' => 'dashicons-buddicons-buddypress-logo'
   ]);
 
   register_taxonomy('am_agent_category','am_agent',[
     'label' => 'Agent Categories',
+    'public' => false,
+    'show_ui' => true,
+    'show_admin_column' => true,
+    'hierarchical' => false,
+  ]);
+
+  register_taxonomy('am_agent_tag','am_agent',[
+    'label' => 'Agent Tags',
     'public' => false,
     'show_ui' => true,
     'show_admin_column' => true,

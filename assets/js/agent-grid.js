@@ -1,8 +1,9 @@
 document.addEventListener('DOMContentLoaded',function(){
   function filterCards(q){
-    q=q.toLowerCase();
+    q=String(q||'').toLowerCase();
     document.querySelectorAll('.am-agent-card').forEach(function(card){
-      var match=card.dataset.search.indexOf(q)!==-1;
+      var data=card.dataset.search||'';
+      var match=data.indexOf(q)!==-1;
       card.style.display=match?'':'none';
     });
     document.querySelectorAll('.am-agent-section').forEach(function(sec){
@@ -12,6 +13,7 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   document.querySelectorAll('.am-agent-search').forEach(function(inp){
     inp.addEventListener('input',function(){filterCards(inp.value);});
+    filterCards(inp.value);
   });
   document.querySelectorAll('.am-agent-tab').forEach(function(btn){
     btn.addEventListener('click',function(){
