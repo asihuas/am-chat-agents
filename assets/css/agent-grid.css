@@ -1,10 +1,9 @@
 .am-agent-search-wrap{margin-bottom:1rem;text-align:center;}
 .am-agent-search{width:100%;max-width:400px;border:none;border-radius:40px;background-color:#F5E9F5;outline:none;padding:8px 12px;padding-left:45px;}
-.am-agent-section{display:none;margin-bottom:24px;}
-.am-agent-section.active{display:block;}
+.am-agent-section{margin-bottom:24px;}
 .am-agent-section-title{margin:0 0 8px;font-size:1.2em;}
 .am-agent-row{display:flex;flex-wrap:wrap;gap:16px;}
-.am-agent-card{flex:1 1 240px;max-width:260px;min-height:150px;display:flex;align-items:flex-start;gap:16px;text-decoration:none;color:inherit;background:#F5E9F5;border-radius:20px;padding:16px;box-shadow:0 2px 4px rgba(0,0,0,0.1);}
+.am-agent-card{flex:0 0 220px;max-width:220px;min-height:150px;display:flex;align-items:flex-start;gap:16px;text-decoration:none;color:inherit;background:#F5E9F5;border-radius:20px;padding:16px;box-shadow:0 2px 4px rgba(0,0,0,0.1);}
 .am-agent-card img{width:72px;height:72px;border-radius:16px;object-fit:cover;}
 .am-agent-card-meta{display:flex;flex-direction:column;}
 .am-agent-name{font-weight:600;font-size:1.1em;}
