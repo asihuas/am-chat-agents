@@ -5,7 +5,7 @@ function am_render_assistant_header(){
   $agent_id = isset($_GET['agent_id']) ? (int)$_GET['agent_id'] : 0;
   if(!$agent_id) return '<div class="error">Missing URL param <code>?agent_id=ID</code>.</div>';
   $name   = esc_html(get_the_title($agent_id) ?: 'Assistant');
-  $avatar = get_post_meta($agent_id,'am_avatar_url',true);
+  $avatar = get_the_post_thumbnail_url($agent_id,'thumbnail');
   $subtitle = get_post_meta($agent_id,'am_subtitle',true) ?: 'Character ready to chat';
   $complement = get_post_meta($agent_id,'am_complement',true) ?: '';
   ob_start(); ?>
@@ -30,7 +30,7 @@ add_shortcode('am_chat', function(){
   $name     = get_the_title($agent_id);
   $welcome  = get_post_meta($agent_id,'am_welcome',true) ?: 'Hi! How can I help today?';
   $voice    = get_post_meta($agent_id,'am_voice_id',true) ?: '';
-  $avatar   = get_post_meta($agent_id,'am_avatar_url',true);
+  $avatar   = get_the_post_thumbnail_url($agent_id,'thumbnail');
   $subtitle = get_post_meta($agent_id,'am_subtitle',true) ?: 'Character ready to chat';
   $complement = get_post_meta($agent_id,'am_complement',true) ?: '';
   $enable_fab = (int) get_option('am_enable_feedback_fab', 1);
@@ -628,23 +628,29 @@ function am_render_conversations_shortcode(){
 
   // Fetch agents visited (unique)
   $agents = $wpdb->get_results($wpdb->prepare("
-    SELECT DISTINCT c.agent_id, p.post_title AS agent_name, pm.meta_value AS avatar_url
+    SELECT DISTINCT c.agent_id, p.post_title AS agent_name
     FROM $conv_table c
     LEFT JOIN {$wpdb->posts} p ON p.ID = c.agent_id
-    LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id = c.agent_id AND pm.meta_key = 'am_avatar_url'
     WHERE c.user_id = %d
     ORDER BY p.post_title ASC
   ", $user_id), ARRAY_A);
+  foreach ($agents as &$agent) {
+    $agent['avatar_url'] = get_the_post_thumbnail_url((int)$agent['agent_id'], 'thumbnail') ?: '';
+  }
+
 
   // Fetch conversations grouped by last modified date
   $conversations = $wpdb->get_results($wpdb->prepare("
-    SELECT c.public_id, c.agent_id, c.title, c.updated_at, p.post_title AS agent_name, pm.meta_value AS avatar_url
+    SELECT c.public_id, c.agent_id, c.title, c.updated_at, p.post_title AS agent_name
     FROM $conv_table c
     LEFT JOIN {$wpdb->posts} p ON p.ID = c.agent_id
-    LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id = c.agent_id AND pm.meta_key = 'am_avatar_url'
     WHERE c.user_id = %d
     ORDER BY c.updated_at DESC
   ", $user_id), ARRAY_A);
+  foreach ($conversations as &$conv) {
+    $conv['avatar_url'] = get_the_post_thumbnail_url((int)$conv['agent_id'], 'thumbnail') ?: '';
+  }
+
 
   // Group conversations by date
   $grouped_conversations = [];
@@ -914,3 +920,66 @@ function am_audio_toggle_button(){
 }
 add_shortcode('am_audio_toggle','am_audio_toggle_button');
 add_shortcode('am-audio-toggle','am_audio_toggle_button');
+
+// Shortcode: grid of agents by category
+function am_agent_grid_shortcode(){
+  wp_enqueue_style('am-agent-grid', AM_CA_PLUGIN_URL.'assets/css/agent-grid.css', [], AM_CA_VERSION);
+  wp_enqueue_script('am-agent-grid', AM_CA_PLUGIN_URL.'assets/js/agent-grid.js', [], AM_CA_VERSION, true);
+
+  $terms = get_terms(['taxonomy'=>'am_agent_category','hide_empty'=>true]);
+  $tabs = [];
+  ob_start();
+  echo '<div class="am-agent-grid-wrapper">';
+  foreach($terms as $t){
+    $agents = get_posts([
+      'post_type' => 'am_agent',
+      'numberposts' => -1,
+      'tax_query' => [[
+        'taxonomy' => 'am_agent_category',
+        'terms' => $t->term_id,
+      ]],
+      'orderby' => 'title',
+      'order' => 'ASC'
+    ]);
+    if(!$agents) continue;
+    echo '<section id="am-agent-section-'.esc_attr($t->term_id).'" class="am-agent-section">';
+    echo '<h3 class="am-agent-section-title">'.esc_html($t->name).'</h3>';
+    echo '<div class="am-agent-row">';
+    foreach($agents as $a){
+      $name = get_the_title($a);
+      $subtitle = get_post_meta($a->ID,'am_subtitle',true);
+      $avatar = get_the_post_thumbnail_url($a->ID,'thumbnail');
+      $link = add_query_arg('agent_id',$a->ID, am_find_chat_page_url());
+      $search = strtolower($name.' '.($subtitle ?: ''));
+      echo '<a class="am-agent-card" href="'.esc_url($link).'" data-search="'.esc_attr($search).'">';
+      if($avatar) echo '<img src="'.esc_url($avatar).'" alt="'.esc_attr($name).'" />';
+      echo '<div class="am-agent-card-meta"><span class="am-agent-name">'.esc_html($name).'</span>';
+      if($subtitle) echo '<span class="am-agent-subtitle">'.esc_html($subtitle).'</span>';
+      echo '</div></a>';
+    }
+    echo '</div></section>';
+    $tabs[] = ['id'=>$t->term_id,'name'=>$t->name];
+  }
+  if($tabs){
+    echo '<div class="am-agent-tabs">';
+    foreach($tabs as $tab){
+      echo '<button type="button" class="am-agent-tab" data-target="am-agent-section-'.esc_attr($tab['id']).'">'.esc_html($tab['name']).'</button>';
+    }
+    echo '</div>';
+  }
+  echo '</div>';
+  return ob_get_clean();
+}
+add_shortcode('am_agent_grid','am_agent_grid_shortcode');
+add_shortcode('am-agent-grid','am_agent_grid_shortcode');
+
+// Shortcode: search box for agent grid
+function am_agent_search_shortcode(){
+  wp_enqueue_style('am-agent-grid', AM_CA_PLUGIN_URL.'assets/css/agent-grid.css', [], AM_CA_VERSION);
+  wp_enqueue_script('am-agent-grid', AM_CA_PLUGIN_URL.'assets/js/agent-grid.js', [], AM_CA_VERSION, true);
+  ob_start();
+  echo '<div class="am-agent-search-wrap"><input type="search" class="am-agent-search" placeholder="Search" /></div>';
+  return ob_get_clean();
+}
+add_shortcode('am_agent_search','am_agent_search_shortcode');
+add_shortcode('am-agent-search','am_agent_search_shortcode');

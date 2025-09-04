@@ -7,7 +7,16 @@ add_action('init', function(){
     'public' => false,
     'show_ui' => true,
     'supports' => ['title','thumbnail'],
+    'taxonomies' => ['am_agent_category'],
     'menu_icon' => 'dashicons-buddicons-buddypress-logo'
+  ]);
+
+  register_taxonomy('am_agent_category','am_agent',[
+    'label' => 'Agent Categories',
+    'public' => false,
+    'show_ui' => true,
+    'show_admin_column' => true,
+    'hierarchical' => false,
   ]);
 });
 
@@ -20,7 +29,6 @@ function am_agent_meta_box_cb($post){
   $prompt  = get_post_meta($post->ID,'am_system_prompt',true);
   $model   = get_post_meta($post->ID,'am_model',true) ?: AM_OPENAI_MODEL;
   $voice   = get_post_meta($post->ID,'am_voice_id',true);
-  $avatar  = get_post_meta($post->ID,'am_avatar_url',true);
   $temp    = get_post_meta($post->ID,'am_temperature',true);
   $subtitle= get_post_meta($post->ID,'am_subtitle',true); // “Character ready to chat” per-agent
   $complement = get_post_meta($post->ID,'am_complement',true);
@@ -42,8 +50,6 @@ function am_agent_meta_box_cb($post){
     <input type="number" step="0.01" min="0" max="2" name="am_temperature" value="<?php echo esc_attr($temp); ?>" style="width:120px"></label></div>
   <div class="am-field"><label><strong>Voice ID (ElevenLabs)</strong><br>
     <input type="text" name="am_voice_id" value="<?php echo esc_attr($voice); ?>" style="width:100%"></label></div>
-  <div class="am-field"><label><strong>Avatar URL</strong><br>
-    <input type="text" name="am_avatar_url" value="<?php echo esc_attr($avatar); ?>" style="width:100%"></label></div>
   <div class="am-field"><label><strong>Banned words (per-agent)</strong><br>
     <textarea name="am_banned_words_agent" placeholder="one word per line"><?php echo esc_textarea($banA); ?></textarea></label></div>
 <?php }
@@ -57,7 +63,6 @@ add_action('save_post_am_agent', function($post_id){
   $t = max(0, min(2, $t));
   update_post_meta($post_id,'am_temperature',$t);
   update_post_meta($post_id,'am_voice_id',sanitize_text_field($_POST['am_voice_id'] ?? ''));
-  update_post_meta($post_id,'am_avatar_url',esc_url_raw($_POST['am_avatar_url'] ?? ''));
   update_post_meta($post_id,'am_subtitle',sanitize_text_field($_POST['am_subtitle'] ?? ''));
   update_post_meta($post_id,'am_complement',sanitize_text_field($_POST['am_complement'] ?? ''));
   update_post_meta($post_id,'am_banned_words_agent',sanitize_textarea_field($_POST['am_banned_words_agent'] ?? ''));
