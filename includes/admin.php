@@ -9,9 +9,33 @@ add_action('admin_menu', function () {
   add_submenu_page($parent,'Settings','Settings','manage_options','am_assistants_settings','am_admin_settings_page');
 });
 
+/**
+ * Ensures the admin pages are wrapped with a minimal HTML skeleton when the
+ * WordPress admin header has not been printed (for example, if the callbacks
+ * are executed in an isolated context). This prevents frameworks from
+ * flagging the output as missing <html>/<body> tags.
+ */
+function am_admin_page_wrapper_open(){
+  $needs_wrapper = !did_action('admin_head');
+  if ($needs_wrapper) {
+    echo '<!DOCTYPE html><html><body class="wp-admin">';
+  }
+  echo '<div class="wrap">';
+  return $needs_wrapper;
+}
+
+function am_admin_page_wrapper_close($wrapped){
+  echo '</div>';
+  if ($wrapped) {
+    echo '</body></html>';
+  }
+}
+
 /** SETTINGS PAGE — stores API keys in options */
 function am_admin_settings_page(){
   if (!current_user_can('manage_options')) return;
+
+  $wrapped = am_admin_page_wrapper_open();
 
   if (isset($_POST['am_settings_nonce']) && wp_verify_nonce($_POST['am_settings_nonce'], 'am_save_settings')) {
     update_option('am_enable_moderation',      isset($_POST['am_enable_moderation']) ? 1 : 0);
@@ -26,30 +50,31 @@ function am_admin_settings_page(){
   $fb_fab      = (int) get_option('am_enable_feedback_fab', 1);
   $banned      = esc_textarea(get_option('am_banned_words', ''));
   ?>
-  <div class="wrap">
-    <h1>AM Assistants — Settings</h1>
-    <form method="post">
-      <?php wp_nonce_field('am_save_settings','am_settings_nonce'); ?>
-      <table class="form-table" role="presentation">
-        <tr><th scope="row">Moderation</th>
-          <td><label><input type="checkbox" name="am_enable_moderation" <?php checked($enable_mod,1); ?>> Enable basic moderation</label></td></tr>
-        <tr><th scope="row">Quick suggestions</th>
-          <td><label><input type="checkbox" name="am_enable_suggestions" <?php checked($enable_sugs,1); ?>> Show 1–3 quick replies on the first turn of each conversation</label></td></tr>
-        <tr><th scope="row">Feedback floating button</th>
-          <td><label><input type="checkbox" name="am_enable_feedback_fab" <?php checked($fb_fab,1); ?>> Show floating 👍/👎 in chat</label></td></tr>
-        <tr><th scope="row">Banned words (global)</th>
-          <td><textarea name="am_banned_words" rows="6" class="large-text" placeholder="one word per line"><?php echo $banned; ?></textarea></td></tr>
-      </table>
-      <?php submit_button('Save Settings'); ?>
-    </form>
-  </div>
+  <h1>AM Assistants — Settings</h1>
+  <form method="post">
+    <?php wp_nonce_field('am_save_settings','am_settings_nonce'); ?>
+    <table class="form-table" role="presentation">
+      <tr><th scope="row">Moderation</th>
+        <td><label><input type="checkbox" name="am_enable_moderation" <?php checked($enable_mod,1); ?>> Enable basic moderation</label></td></tr>
+      <tr><th scope="row">Quick suggestions</th>
+        <td><label><input type="checkbox" name="am_enable_suggestions" <?php checked($enable_sugs,1); ?>> Show 1–3 quick replies on the first turn of each conversation</label></td></tr>
+      <tr><th scope="row">Feedback floating button</th>
+        <td><label><input type="checkbox" name="am_enable_feedback_fab" <?php checked($fb_fab,1); ?>> Show floating 👍/👎 in chat</label></td></tr>
+      <tr><th scope="row">Banned words (global)</th>
+        <td><textarea name="am_banned_words" rows="6" class="large-text" placeholder="one word per line"><?php echo $banned; ?></textarea></td></tr>
+    </table>
+    <?php submit_button('Save Settings'); ?>
+  </form>
   <?php
+
+  am_admin_page_wrapper_close($wrapped);
 }
 /** ANALYTICS PAGE (with feedback viewer) **/
 function am_admin_analytics_page(){
   if (!current_user_can('manage_options')) return;
+  $wrapped = am_admin_page_wrapper_open();
   global $wpdb;
-  $c = AM_DB_CONVERSATIONS; 
+  $c = AM_DB_CONVERSATIONS;
   $m = AM_DB_MESSAGES; 
   $f = AM_DB_FEEDBACK; // Use the feedback table instead of events
   $u = $wpdb->users;
@@ -61,6 +86,7 @@ function am_admin_analytics_page(){
   };
   if(!$table_ok($c) || !$table_ok($m) || !$table_ok($f)){
     echo '<div class="notice notice-warning"><p>Tables are not ready yet. Reactivate the plugin to run the installer.</p></div>';
+    am_admin_page_wrapper_close($wrapped);
     return;
   }
 
@@ -78,15 +104,14 @@ function am_admin_analytics_page(){
     ORDER BY c.updated_at DESC LIMIT 10
   ", ARRAY_A);
   ?>
-  <div class="wrap">
-    <h1>AM Assistants — Analytics</h1>
-    <div class="am-cards" style="display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:12px;">
-      <div class="card"><h3>Total conversations</h3><p><strong><?php echo number_format_i18n($total_convs); ?></strong></p></div>
-      <div class="card"><h3>Total messages</h3><p><strong><?php echo number_format_i18n($total_msgs); ?></strong></p></div>
-      <div class="card"><h3>Avg. msgs/conversation</h3><p><strong><?php echo number_format_i18n($avg_len,2); ?></strong></p></div>
-      <div class="card"><h3>👍 feedback</h3><p><strong><?php echo number_format_i18n($fb_up); ?></strong></p></div>
-      <div class="card"><h3>👎 feedback</h3><p><strong><?php echo number_format_i18n($fb_down); ?></strong></p></div>
-    </div>
+  <h1>AM Assistants — Analytics</h1>
+  <div class="am-cards" style="display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:12px;">
+    <div class="card"><h3>Total conversations</h3><p><strong><?php echo number_format_i18n($total_convs); ?></strong></p></div>
+    <div class="card"><h3>Total messages</h3><p><strong><?php echo number_format_i18n($total_msgs); ?></strong></p></div>
+    <div class="card"><h3>Avg. msgs/conversation</h3><p><strong><?php echo number_format_i18n($avg_len,2); ?></strong></p></div>
+    <div class="card"><h3>👍 feedback</h3><p><strong><?php echo number_format_i18n($fb_up); ?></strong></p></div>
+    <div class="card"><h3>👎 feedback</h3><p><strong><?php echo number_format_i18n($fb_down); ?></strong></p></div>
+  </div>
 
     <h2 style="margin-top:24px;">Recent conversations</h2>
     <table class="widefat striped">
@@ -166,6 +191,7 @@ function am_admin_analytics_page(){
         <?php
     }
     ?>
-  </div>
   <?php
+
+  am_admin_page_wrapper_close($wrapped);
 }
